@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🐱 미로 탈출 게임 🧀</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Arial', sans-serif;
+            overflow-x: hidden;
+            touch-action: manipulation;
+        }
+
+        .game-container {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #764ba2;
+            margin: 0 0 20px 0;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .info {
+            text-align: center;
+            font-size: 1.2em;
+            color: #555;
+            margin-bottom: 20px;
+        }
+
+        .controls {
+            text-align: center;
+            margin-bottom: 15px;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        canvas {
+            border: 4px solid #764ba2;
+            border-radius: 10px;
+            display: block;
+            margin: 0 auto;
+            background: #f0f0f0;
+        }
+
+        .level-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-weight: bold;
+            -webkit-tap-highlight-color: rgba(0,0,0,0.2);
+            touch-action: manipulation;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(118, 75, 162, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(118, 75, 162, 0.3);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .controls-overlay {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 1000;
+        }
+
+        .dpad {
+            position: relative;
+            width: 150px;
+            height: 150px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: 1fr 1fr 1fr;
+            gap: 5px;
+        }
+
+        .dpad-button {
+            background: rgba(102, 126, 234, 0.8);
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            color: white;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            transition: all 0.1s;
+        }
+
+        .dpad-button:active {
+            background: rgba(118, 75, 162, 0.9);
+            transform: scale(0.95);
+        }
+
+        .dpad-center {
+            background: transparent;
+            border: none;
+            pointer-events: none;
+        }
+
+        .dpad-up { grid-column: 2; grid-row: 1; }
+        .dpad-left { grid-column: 1; grid-row: 2; }
+        .dpad-center { grid-column: 2; grid-row: 2; }
+        .dpad-right { grid-column: 3; grid-row: 2; }
+        .dpad-down { grid-column: 2; grid-row: 3; }
+
+        @media (max-width: 768px) {
+            .game-container {
+                padding: 15px;
+            }
+
+            h1 {
+                font-size: 1.8em;
+            }
+
+            .level-buttons {
+                flex-wrap: wrap;
+            }
+
+            button {
+                padding: 10px 15px;
+                font-size: 0.9em;
+            }
+
+            canvas {
+                max-width: 100%;
+                height: auto;
+            }
+        }
+
+        @media (min-width: 769px) {
+            .controls-overlay {
+                display: none;
+            }
+        }
+
+        .congratulations {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 40px 60px;
+            border-radius: 20px;
+            box-shadow: 0 10px 50px rgba(0,0,0,0.5);
+            text-align: center;
+            display: none;
+            z-index: 1000;
+            animation: popup 0.5s ease-out;
+        }
+
+        @keyframes popup {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+
+        .congratulations h2 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin: 0 0 20px 0;
+        }
+
+        .congratulations p {
+            font-size: 1.3em;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: none;
+            z-index: 999;
+        }
+
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px 50px;
+            border-radius: 20px;
+            text-align: center;
+            display: none;
+            z-index: 1001;
+        }
+
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>🐱 미로 탈출 게임 🧀</h1>
+        <div class="info">
+            <div>레벨: <span id="level">1</span> | 움직임: <span id="moves">0</span></div>
+            <div id="pathInfo" style="margin-top: 5px; font-size: 0.9em; color: #666;"></div>
+            <div id="hintInfo" style="margin-top: 5px; font-size: 0.9em; color: #666;"></div>
+        </div>
+        <div class="controls">
+            ⬆️⬇️⬅️➡️ 화살표 키로 고양이를 움직여 치즈를 찾으세요!
+        </div>
+        <canvas id="gameCanvas" width="500" height="500"></canvas>
+        <div class="level-buttons">
+            <button ontouchstart="this.click(); event.preventDefault();" onclick="loadLevel(3)">레벨 3 (일반)</button>
+            <button ontouchstart="this.click(); event.preventDefault();" onclick="loadLevel(4)">레벨 4 (어둠 모드 🌙)</button>
+            <button ontouchstart="this.click(); event.preventDefault();" onclick="loadLevel(5)">레벨 5 (슈퍼 난이도 🔥)</button>
+            <button ontouchstart="this.click(); event.preventDefault();" onclick="loadLevel(6)">레벨 6 (극한 난이도 💀)</button>
+            <button ontouchstart="this.click(); event.preventDefault();" onclick="loadLevel(7)">레벨 7 (불가능 모드 ☠️)</button>
+            <button ontouchstart="this.click(); event.preventDefault();" onclick="restartLevel()">새 미로 생성</button>
+            <button id="hintBtn" ontouchstart="this.click(); event.preventDefault();" onclick="useHint()" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">💡 힌트</button>
+        </div>
+    </div>
+
+    <div class="overlay" id="overlay"></div>
+    
+    <div class="loading" id="loading">
+        <div class="loading-spinner"></div>
+        <p>미로 생성 중...</p>
+    </div>
+    
+    <div class="congratulations" id="congratulations">
+        <h2>🎉 축하합니다! 🎉</h2>
+        <p>미로를 성공적으로 탈출했어요!</p>
+        <p>움직임: <span id="finalMoves">0</span>번</p>
+        <p id="finalHintInfo" style="font-size: 0.9em;"></p>
+        <p id="finalPathInfo" style="font-size: 0.9em; color: #666;"></p>
+        <button ontouchstart="this.click(); event.preventDefault();" onclick="nextLevel()">다음 레벨</button>
+        <button ontouchstart="this.click(); event.preventDefault();" onclick="restartLevel()">다시 하기</button>
+    </div>
+
+    <!-- 모바일 방향키 컨트롤 -->
+    <div class="controls-overlay">
+        <div class="dpad">
+            <div class="dpad-button dpad-up" ontouchstart="handleDpadTouch(event, 0, -1)" ontouchend="event.preventDefault()">⬆️</div>
+            <div class="dpad-button dpad-left" ontouchstart="handleDpadTouch(event, -1, 0)" ontouchend="event.preventDefault()">⬅️</div>
+            <div class="dpad-center"></div>
+            <div class="dpad-button dpad-right" ontouchstart="handleDpadTouch(event, 1, 0)" ontouchend="event.preventDefault()">➡️</div>
+            <div class="dpad-button dpad-down" ontouchstart="handleDpadTouch(event, 0, 1)" ontouchend="event.preventDefault()">⬇️</div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let cellSize = 25;
+        let gridSize = 20;
+        
+        let player = { x: 0, y: 0 };
+        let goal = { x: 19, y: 19 };
+        let moves = 0;
+        let currentLevel = 3;
+        let maze = [];
+        let hintActive = false;
+        let hintCooldown = false;
+        let hintsRemaining = 0;
+        let hintsUsed = 0;
+        let shortestPathLength = 0;
+        
+        // BFS로 경로 존재 여부 및 최단 거리 확인
+        function findShortestPath(startX, startY, goalX, goalY) {
+            const visited = Array(gridSize).fill().map(() => Array(gridSize).fill(false));
+            const queue = [[startX, startY, 0]]; // x, y, distance
+            visited[startY][startX] = true;
+            
+            const directions = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+            
+            while (queue.length > 0) {
+                const [x, y, dist] = queue.shift();
+                
+                // 목표 지점 도달
+                if (x === goalX && y === goalY) {
+                    return dist;
+                }
+                
+                // 4방향 탐색
+                for (const [dx, dy] of directions) {
+                    const newX = x + dx;
+                    const newY = y + dy;
+                    
+                    if (newX >= 0 && newX < gridSize && 
+                        newY >= 0 && newY < gridSize && 
+                        maze[newY][newX] === 0 && 
+                        !visited[newY][newX]) {
+                        visited[newY][newX] = true;
+                        queue.push([newX, newY, dist + 1]);
+                    }
+                }
+            }
+            
+            return -1; // 경로 없음
+        }
+        
+        // 랜덤한 빈 공간 찾기
+        function findRandomEmptyCell() {
+            const emptyCells = [];
+            for (let y = 0; y < gridSize; y++) {
+                for (let x = 0; x < gridSize; x++) {
+                    if (maze[y][x] === 0) {
+                        emptyCells.push([x, y]);
+                    }
+                }
+            }
+            if (emptyCells.length === 0) return null;
+            return emptyCells[Math.floor(Math.random() * emptyCells.length)];
+        }
+        
+        // 랜덤 미로 생성 (DFS 알고리즘 사용)
+        function generateMaze() {
+            let attempts = 0;
+            const maxAttempts = 200; // 충분한 시도 횟수로 복원
+            let minPathLength = 1;
+            
+            if (currentLevel === 5) {
+                minPathLength = 120;
+            } else if (currentLevel === 6) {
+                minPathLength = 150;
+            } else if (currentLevel === 7) {
+                minPathLength = 180;
+            }
+            
+            while (attempts < maxAttempts) {
+                // 모든 셀을 벽으로 초기화
+                maze = Array(gridSize).fill().map(() => Array(gridSize).fill(1));
+                
+                // DFS로 미로 생성
+                const stack = [];
+                const startX = Math.floor(Math.random() * (gridSize / 2)) * 2;
+                const startY = Math.floor(Math.random() * (gridSize / 2)) * 2;
+                maze[startY][startX] = 0;
+                stack.push([startX, startY]);
+                
+                const directions = [[0, -2], [2, 0], [0, 2], [-2, 0]];
+                
+                while (stack.length > 0) {
+                    const [x, y] = stack[stack.length - 1];
+                    
+                    // 랜덤하게 방향 섞기
+                    const shuffledDirections = directions.sort(() => Math.random() - 0.5);
+                    let moved = false;
+                    
+                    for (const [dx, dy] of shuffledDirections) {
+                        const newX = x + dx;
+                        const newY = y + dy;
+                        
+                        if (newX >= 0 && newX < gridSize && newY >= 0 && newY < gridSize && maze[newY][newX] === 1) {
+                            maze[newY][newX] = 0;
+                            maze[y + dy/2][x + dx/2] = 0;
+                            stack.push([newX, newY]);
+                            moved = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!moved) {
+                        stack.pop();
+                    }
+                }
+                
+                // 레벨 5, 6, 7: 랜덤 시작/도착 지점
+                if (currentLevel >= 5) {
+                    // 추가 경로 설정 (조건을 만족하기 쉽게 약간 많이)
+                    let extraPaths = Math.floor(gridSize * 0.5);
+                    if (currentLevel === 6) {
+                        extraPaths = Math.floor(gridSize * 0.4);
+                    } else if (currentLevel === 7) {
+                        extraPaths = Math.floor(gridSize * 0.35);
+                    }
+                    
+                    for (let i = 0; i < extraPaths; i++) {
+                        const x = Math.floor(Math.random() * gridSize);
+                        const y = Math.floor(Math.random() * gridSize);
+                        if (x > 0 && x < gridSize - 1 && y > 0 && y < gridSize - 1) {
+                            maze[y][x] = 0;
+                        }
+                    }
+                    
+                    // 랜덤 시작/도착 지점 찾기
+                    const startPos = findRandomEmptyCell();
+                    const goalPos = findRandomEmptyCell();
+                    
+                    if (!startPos || !goalPos) {
+                        attempts++;
+                        continue;
+                    }
+                    
+                    const [startX, startY] = startPos;
+                    const [goalX, goalY] = goalPos;
+                    
+                    // 경로 길이 확인
+                    const pathLength = findShortestPath(startX, startY, goalX, goalY);
+                    
+                    // 반드시 경로가 있어야 하고, 최소 길이도 만족해야 함
+                    if (pathLength >= minPathLength) {
+                        player.x = startX;
+                        player.y = startY;
+                        goal.x = goalX;
+                        goal.y = goalY;
+                        shortestPathLength = pathLength; // 최단 거리 저장
+                        console.log(`유효한 미로 생성 완료! (시도: ${attempts + 1}번, 최단 거리: ${pathLength}칸)`);
+                        return;
+                    }
+                } else {
+                    // 레벨 3, 4: 고정 시작/도착 지점
+                    maze[0][0] = 0;
+                    maze[gridSize-1][gridSize-1] = 0;
+                    
+                    // 추가 경로를 최소화 (gridSize * 0.3만 추가)
+                    for (let i = 0; i < Math.floor(gridSize * 0.3); i++) {
+                        const x = Math.floor(Math.random() * gridSize);
+                        const y = Math.floor(Math.random() * gridSize);
+                        if ((x !== 0 || y !== 0) && (x !== gridSize-1 || y !== gridSize-1)) {
+                            maze[y][x] = 0;
+                        }
+                    }
+                    
+                    // 경로가 존재하는지 확인
+                    const pathLength = findShortestPath(0, 0, gridSize - 1, gridSize - 1);
+                    if (pathLength > 0) {
+                        player.x = 0;
+                        player.y = 0;
+                        goal.x = gridSize - 1;
+                        goal.y = gridSize - 1;
+                        shortestPathLength = pathLength; // 최단 거리 저장
+                        console.log(`유효한 미로 생성 완료! (시도: ${attempts + 1}번, 최단 거리: ${pathLength}칸)`);
+                        return;
+                    }
+                }
+                
+                attempts++;
+            }
+            
+            // 200번 시도해도 안되면 조건을 완화해서 다시 시도
+            console.log('조건을 완화하여 재시도...');
+            attempts = 0;
+            const relaxedMinPath = Math.floor(minPathLength * 0.7); // 30% 완화
+            
+            while (attempts < 100) {
+                maze = Array(gridSize).fill().map(() => Array(gridSize).fill(1));
+                
+                const stack = [];
+                const startX = Math.floor(Math.random() * (gridSize / 2)) * 2;
+                const startY = Math.floor(Math.random() * (gridSize / 2)) * 2;
+                maze[startY][startX] = 0;
+                stack.push([startX, startY]);
+                
+                const directions = [[0, -2], [2, 0], [0, 2], [-2, 0]];
+                
+                while (stack.length > 0) {
+                    const [x, y] = stack[stack.length - 1];
+                    const shuffledDirections = directions.sort(() => Math.random() - 0.5);
+                    let moved = false;
+                    
+                    for (const [dx, dy] of shuffledDirections) {
+                        const newX = x + dx;
+                        const newY = y + dy;
+                        
+                        if (newX >= 0 && newX < gridSize && newY >= 0 && newY < gridSize && maze[newY][newX] === 1) {
+                            maze[newY][newX] = 0;
+                            maze[y + dy/2][x + dx/2] = 0;
+                            stack.push([newX, newY]);
+                            moved = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!moved) {
+                        stack.pop();
+                    }
+                }
+                
+                if (currentLevel >= 5) {
+                    // 더 많은 추가 경로
+                    const extraPaths = Math.floor(gridSize * 0.8);
+                    for (let i = 0; i < extraPaths; i++) {
+                        const x = Math.floor(Math.random() * gridSize);
+                        const y = Math.floor(Math.random() * gridSize);
+                        maze[y][x] = 0;
+                    }
+                    
+                    const startPos = findRandomEmptyCell();
+                    const goalPos = findRandomEmptyCell();
+                    
+                    if (startPos && goalPos) {
+                        const [startX, startY] = startPos;
+                        const [goalX, goalY] = goalPos;
+                        const pathLength = findShortestPath(startX, startY, goalX, goalY);
+                        
+                        if (pathLength >= relaxedMinPath) {
+                            player.x = startX;
+                            player.y = startY;
+                            goal.x = goalX;
+                            goal.y = goalY;
+                            shortestPathLength = pathLength; // 최단 거리 저장
+                            console.log(`완화된 조건으로 미로 생성 완료! (최단 거리: ${pathLength}칸)`);
+                            return;
+                        }
+                    }
+                } else {
+                    maze[0][0] = 0;
+                    maze[gridSize-1][gridSize-1] = 0;
+                    
+                    for (let i = 0; i < Math.floor(gridSize * 0.5); i++) {
+                        const x = Math.floor(Math.random() * gridSize);
+                        const y = Math.floor(Math.random() * gridSize);
+                        maze[y][x] = 0;
+                    }
+                    
+                    const pathLength = findShortestPath(0, 0, gridSize - 1, gridSize - 1);
+                    if (pathLength > 0) {
+                        player.x = 0;
+                        player.y = 0;
+                        goal.x = gridSize - 1;
+                        goal.y = gridSize - 1;
+                        shortestPathLength = pathLength; // 최단 거리 저장
+                        console.log(`완화된 조건으로 미로 생성 완료! (최단 거리: ${pathLength}칸)`);
+                        return;
+                    }
+                }
+                
+                attempts++;
+            }
+            
+            // 그래도 안되면 확실히 풀 수 있는 간단한 미로 (하지만 경로는 보장)
+            console.log('간단한 미로 생성 (경로 보장)');
+            maze = Array(gridSize).fill().map(() => Array(gridSize).fill(0));
+            
+            if (currentLevel >= 5) {
+                // 랜덤 시작/도착
+                const startX = Math.floor(Math.random() * gridSize);
+                const startY = Math.floor(Math.random() * gridSize);
+                const goalX = Math.floor(Math.random() * gridSize);
+                const goalY = Math.floor(Math.random() * gridSize);
+                
+                player.x = startX;
+                player.y = startY;
+                goal.x = goalX;
+                goal.y = goalY;
+            } else {
+                player.x = 0;
+                player.y = 0;
+                goal.x = gridSize - 1;
+                goal.y = gridSize - 1;
+            }
+            
+            // 약간의 벽만 추가 (경로는 항상 존재)
+            for (let i = 0; i < gridSize * 2; i++) {
+                const x = Math.floor(Math.random() * gridSize);
+                const y = Math.floor(Math.random() * gridSize);
+                if ((x !== player.x || y !== player.y) && (x !== goal.x || y !== goal.y)) {
+                    maze[y][x] = 1;
+                }
+            }
+            
+            // 최단 거리 계산
+            shortestPathLength = findShortestPath(player.x, player.y, goal.x, goal.y);
+            if (shortestPathLength < 0) shortestPathLength = 0; // 경로 없으면 0
+        }
+        
+        function drawMaze() {
+            // 캔버스 크기 조정
+            let canvasSize = 500;
+            if (currentLevel === 5) canvasSize = 750;
+            if (currentLevel === 6) canvasSize = 735;
+            if (currentLevel === 7) canvasSize = 720;
+            
+            canvas.width = canvasSize;
+            canvas.height = canvasSize;
+            
+            // 배경
+            ctx.fillStyle = '#f8f9fa';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 어둠 모드인 경우 (레벨 4 이상) - 단, 힌트가 활성화되지 않았을 때만
+            if (currentLevel >= 4 && !hintActive) {
+                // 전체를 어둡게
+                ctx.fillStyle = '#1a1a1a';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // 플레이어 주변만 보이게
+                const visibleRange = 2;
+                for (let y = Math.max(0, player.y - visibleRange); y <= Math.min(gridSize - 1, player.y + visibleRange); y++) {
+                    for (let x = Math.max(0, player.x - visibleRange); x <= Math.min(gridSize - 1, player.x + visibleRange); x++) {
+                        if (maze[y][x] === 1) {
+                            // 벽
+                            ctx.fillStyle = '#764ba2';
+                            ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+                            ctx.strokeStyle = '#667eea';
+                            ctx.lineWidth = 1;
+                            ctx.strokeRect(x * cellSize, y * cellSize, cellSize, cellSize);
+                        } else {
+                            // 길
+                            ctx.fillStyle = '#ffffff';
+                            ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+                            ctx.strokeStyle = '#e0e0e0';
+                            ctx.lineWidth = 1;
+                            ctx.strokeRect(x * cellSize, y * cellSize, cellSize, cellSize);
+                        }
+                    }
+                }
+                
+                // 목표가 보이는 범위에 있으면 그리기
+                if (Math.abs(goal.x - player.x) <= visibleRange && Math.abs(goal.y - player.y) <= visibleRange) {
+                    let fontSize = 18;
+                    let offset = 3;
+                    let yOffset = 19;
+                    if (currentLevel === 5) {
+                        fontSize = 20;
+                        offset = 6;
+                        yOffset = 21;
+                    } else if (currentLevel === 6) {
+                        fontSize = 18;
+                        offset = 2;
+                        yOffset = 17;
+                    } else if (currentLevel === 7) {
+                        fontSize = 15;
+                        offset = 2;
+                        yOffset = 15;
+                    }
+                    ctx.font = `${fontSize}px Arial`;
+                    ctx.fillText('🧀', goal.x * cellSize + offset, goal.y * cellSize + yOffset);
+                }
+                
+                // 플레이어 그리기
+                let fontSize = 18;
+                let offset = 3;
+                let yOffset = 19;
+                if (currentLevel === 5) {
+                    fontSize = 20;
+                    offset = 6;
+                    yOffset = 21;
+                } else if (currentLevel === 6) {
+                    fontSize = 18;
+                    offset = 2;
+                    yOffset = 17;
+                } else if (currentLevel === 7) {
+                    fontSize = 15;
+                    offset = 2;
+                    yOffset = 15;
+                }
+                ctx.font = `${fontSize}px Arial`;
+                ctx.fillText('🐱', player.x * cellSize + offset, player.y * cellSize + yOffset);
+                
+            } else {
+                // 일반 모드 - 전체 미로 보이기 (레벨 3 또는 힌트 활성화)
+                for (let y = 0; y < gridSize; y++) {
+                    for (let x = 0; x < gridSize; x++) {
+                        if (maze[y][x] === 1) {
+                            // 벽
+                            ctx.fillStyle = '#764ba2';
+                            ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+                            ctx.strokeStyle = '#667eea';
+                            ctx.lineWidth = 1;
+                            ctx.strokeRect(x * cellSize, y * cellSize, cellSize, cellSize);
+                        } else {
+                            // 길
+                            ctx.fillStyle = '#ffffff';
+                            ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+                            ctx.strokeStyle = '#e0e0e0';
+                            ctx.lineWidth = 1;
+                            ctx.strokeRect(x * cellSize, y * cellSize, cellSize, cellSize);
+                        }
+                    }
+                }
+                
+                // 목표 (치즈) 그리기
+                let fontSize = 18;
+                let offset = 3;
+                let yOffset = 19;
+                if (currentLevel === 5) {
+                    fontSize = 20;
+                    offset = 6;
+                    yOffset = 21;
+                } else if (currentLevel === 6) {
+                    fontSize = 18;
+                    offset = 2;
+                    yOffset = 17;
+                } else if (currentLevel === 7) {
+                    fontSize = 15;
+                    offset = 2;
+                    yOffset = 15;
+                }
+                ctx.font = `${fontSize}px Arial`;
+                ctx.fillText('🧀', goal.x * cellSize + offset, goal.y * cellSize + yOffset);
+                
+                // 플레이어 (고양이) 그리기
+                ctx.font = `${fontSize}px Arial`;
+                ctx.fillText('🐱', player.x * cellSize + offset, player.y * cellSize + yOffset);
+            }
+            
+            // 힌트 활성화 표시
+            if (hintActive) {
+                ctx.fillStyle = 'rgba(255, 215, 0, 0.3)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.fillStyle = '#FFD700';
+                ctx.font = 'bold 24px Arial';
+                ctx.textAlign = 'center';
+                let hintText = '💡 힌트 활성화!';
+                if (currentLevel === 6) hintText = '💡 힌트 활성화! (2초)';
+                if (currentLevel === 7) hintText = `💡 힌트 활성화! (1.5초, ${hintsRemaining}번 남음)`;
+                ctx.fillText(hintText, canvas.width / 2, 30);
+                ctx.textAlign = 'left';
+            }
+        }
+        
+        function updateHintButton() {
+            const hintBtn = document.getElementById('hintBtn');
+            if (!hintBtn) return;
+            
+            if (currentLevel === 7) {
+                hintBtn.textContent = `💡 힌트 (${hintsRemaining}/4)`;
+                if (hintsRemaining <= 0) {
+                    hintBtn.disabled = true;
+                    hintBtn.style.opacity = '0.5';
+                }
+            } else {
+                hintBtn.textContent = '💡 힌트';
+                hintBtn.disabled = false;
+                hintBtn.style.opacity = '1';
+            }
+        }
+        
+        function updateInfoDisplay() {
+            // 최단 거리 표시
+            const pathInfo = document.getElementById('pathInfo');
+            if (pathInfo && shortestPathLength > 0) {
+                pathInfo.textContent = `최단 거리: ${shortestPathLength}칸`;
+            }
+            
+            // 힌트 사용 횟수 표시 (레벨 4 이상)
+            const hintInfo = document.getElementById('hintInfo');
+            if (hintInfo && currentLevel >= 4) {
+                if (currentLevel === 7) {
+                    hintInfo.textContent = `힌트 사용: ${hintsUsed}회 (남은 횟수: ${hintsRemaining}/4)`;
+                } else {
+                    hintInfo.textContent = `힌트 사용: ${hintsUsed}회`;
+                }
+            } else if (hintInfo) {
+                hintInfo.textContent = '';
+            }
+        }
+        
+        function useHint() {
+            // 레벨 3이거나 이미 힌트가 활성화되어 있거나 쿨다운 중이면 무시
+            if (currentLevel < 4 || hintActive || hintCooldown) {
+                if (hintCooldown) {
+                    alert('힌트는 10초에 한 번만 사용할 수 있어요!');
+                }
+                return;
+            }
+            
+            // 레벨 7에서 힌트 횟수 체크
+            if (currentLevel === 7) {
+                if (hintsRemaining <= 0) {
+                    alert('힌트를 모두 사용했어요! 😱');
+                    return;
+                }
+                hintsRemaining--;
+                updateHintButton();
+            }
+            
+            // 힌트 사용 횟수 증가
+            hintsUsed++;
+            updateInfoDisplay();
+            
+            // 힌트 지속 시간 (레벨 6은 2초, 레벨 7은 1.5초, 나머지는 3초)
+            let hintDuration = 3000;
+            if (currentLevel === 6) {
+                hintDuration = 2000;
+            } else if (currentLevel === 7) {
+                hintDuration = 1500;
+            }
+            
+            // 힌트 활성화
+            hintActive = true;
+            hintCooldown = true;
+            const hintBtn = document.getElementById('hintBtn');
+            if (currentLevel !== 7 || hintsRemaining > 0) {
+                hintBtn.disabled = true;
+            }
+            
+            drawMaze();
+            
+            // 힌트 비활성화
+            setTimeout(() => {
+                hintActive = false;
+                drawMaze();
+            }, hintDuration);
+            
+            // 10초 후 힌트 다시 사용 가능 (레벨 7에서 힌트가 남아있을 때만)
+            setTimeout(() => {
+                hintCooldown = false;
+                if (currentLevel !== 7 || hintsRemaining > 0) {
+                    hintBtn.disabled = false;
+                }
+            }, 10000);
+        }
+        
+        function movePlayer(dx, dy) {
+            const newX = player.x + dx;
+            const newY = player.y + dy;
+            
+            // 경계 체크
+            if (newX < 0 || newX >= gridSize || newY < 0 || newY >= gridSize) {
+                return;
+            }
+            
+            // 벽 체크
+            if (maze[newY][newX] === 1) {
+                return;
+            }
+            
+            // 이동
+            player.x = newX;
+            player.y = newY;
+            moves++;
+            document.getElementById('moves').textContent = moves;
+            
+            drawMaze();
+            
+            // 목표 도달 체크
+            if (player.x === goal.x && player.y === goal.y) {
+                setTimeout(showCongratulations, 300);
+            }
+        }
+        
+        function showCongratulations() {
+            document.getElementById('finalMoves').textContent = moves;
+            
+            // 힌트 사용 정보 표시
+            const finalHintInfo = document.getElementById('finalHintInfo');
+            if (currentLevel >= 4) {
+                finalHintInfo.textContent = `힌트 사용: ${hintsUsed}회`;
+            } else {
+                finalHintInfo.textContent = '';
+            }
+            
+            // 최단 거리 정보 표시
+            const finalPathInfo = document.getElementById('finalPathInfo');
+            if (shortestPathLength > 0) {
+                const efficiency = ((shortestPathLength / moves) * 100).toFixed(1);
+                finalPathInfo.textContent = `최단 거리: ${shortestPathLength}칸 (효율: ${efficiency}%)`;
+            } else {
+                finalPathInfo.textContent = '';
+            }
+            
+            document.getElementById('overlay').style.display = 'block';
+            document.getElementById('congratulations').style.display = 'block';
+        }
+        
+        function hideCongratulations() {
+            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('congratulations').style.display = 'none';
+        }
+        
+        function nextLevel() {
+            hideCongratulations();
+            currentLevel++;
+            if (currentLevel > 7) currentLevel = 3;
+            loadLevel(currentLevel);
+        }
+        
+        function restartLevel() {
+            hideCongratulations();
+            loadLevel(currentLevel);
+        }
+        
+        function loadLevel(level) {
+            console.log('loadLevel called with level:', level);
+            currentLevel = level;
+            
+            // 로딩 표시
+            const overlay = document.getElementById('overlay');
+            const loading = document.getElementById('loading');
+            
+            console.log('Showing loading...');
+            if (overlay) overlay.style.display = 'block';
+            if (loading) loading.style.display = 'block';
+            
+            // 비동기로 미로 생성 (UI가 멈추지 않도록)
+            setTimeout(() => {
+                console.log('Starting maze generation...');
+                
+                // 레벨별 맵 크기 설정
+                if (level === 5) {
+                    gridSize = 30;
+                    cellSize = 25;
+                } else if (level === 6) {
+                    gridSize = 35;
+                    cellSize = 21;
+                } else if (level === 7) {
+                    gridSize = 40;
+                    cellSize = 18;
+                } else {
+                    gridSize = 20;
+                    cellSize = 25;
+                }
+                
+                generateMaze(); // 매번 새로운 미로 생성
+                console.log('Maze generated!');
+                
+                moves = 0;
+                hintActive = false;
+                hintCooldown = false;
+                hintsUsed = 0; // 힌트 사용 횟수 초기화
+                
+                // 레벨 7은 힌트 4번 제한
+                hintsRemaining = (level === 7) ? 4 : 999;
+                updateHintButton();
+                
+                let levelText = level;
+                if (level === 4) levelText = '4 (어둠 모드 🌙)';
+                if (level === 5) levelText = '5 (슈퍼 난이도 🔥)';
+                if (level === 6) levelText = '6 (극한 난이도 💀)';
+                if (level === 7) levelText = '7 (불가능 모드 ☠️)';
+                
+                document.getElementById('level').textContent = levelText;
+                document.getElementById('moves').textContent = moves;
+                updateInfoDisplay(); // 최단 거리 및 힌트 정보 표시
+                drawMaze();
+                
+                console.log('Hiding loading...');
+                // 로딩 숨기기
+                if (overlay) overlay.style.display = 'none';
+                if (loading) loading.style.display = 'none';
+            }, 100);
+        }
+        
+        // 터치/스와이프 지원
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchEndX = 0;
+        let touchEndY = 0;
+
+        function handleDpadTouch(event, dx, dy) {
+            event.preventDefault();
+            movePlayer(dx, dy);
+        }
+
+        canvas.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, false);
+
+        canvas.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            touchEndY = e.changedTouches[0].screenY;
+            handleSwipe();
+        }, false);
+
+        function handleSwipe() {
+            const deltaX = touchEndX - touchStartX;
+            const deltaY = touchEndY - touchStartY;
+            const minSwipeDistance = 30;
+
+            if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                // 좌우 스와이프
+                if (Math.abs(deltaX) > minSwipeDistance) {
+                    if (deltaX > 0) {
+                        movePlayer(1, 0); // 오른쪽
+                    } else {
+                        movePlayer(-1, 0); // 왼쪽
+                    }
+                }
+            } else {
+                // 상하 스와이프
+                if (Math.abs(deltaY) > minSwipeDistance) {
+                    if (deltaY > 0) {
+                        movePlayer(0, 1); // 아래
+                    } else {
+                        movePlayer(0, -1); // 위
+                    }
+                }
+            }
+        }
+
+        // 키보드 이벤트
+        document.addEventListener('keydown', (e) => {
+            switch(e.key) {
+                case 'ArrowUp':
+                    e.preventDefault();
+                    movePlayer(0, -1);
+                    break;
+                case 'ArrowDown':
+                    e.preventDefault();
+                    movePlayer(0, 1);
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    movePlayer(-1, 0);
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    movePlayer(1, 0);
+                    break;
+            }
+        });
+        
+        // 게임 시작
+        loadLevel(3);
+    </script>
+</body>
+</html>
